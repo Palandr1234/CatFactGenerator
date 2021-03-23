@@ -55,7 +55,6 @@ def load_data(path: str, max_size: int, min_num: int = 5, test_proportion: float
     # sort the vocabulary and discard all the words which has the number of occurrences less than min_num
     voc = [w for w, count in token_counter.most_common() if count >= min_num]
     mapping = zip(voc, range(len(voc)))
-    print(voc)
 
     d = defaultdict(lambda: 1, mapping)
 
