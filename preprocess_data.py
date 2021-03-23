@@ -1,6 +1,8 @@
 from collections import Counter, defaultdict
 import math
 import numpy as np
+import argparse
+import os
 
 
 def create_sentence_matrix(path: str, num_sentences: int, min_threshold: int, max_threshold: int, word_dict: dict) \
@@ -80,4 +82,32 @@ def load_data(path: str, max_size: int, min_num: int = 5, test_proportion: float
 
 
 if __name__ == '__main__':
-    load_data("putin.txt", 100)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('input', help='Text file previously tokenized and preprocessed')
+    parser.add_argument('output', help='Directory to save the data')
+    parser.add_argument('--max-length',
+                        help='Maximum sentence length (default 100)',
+                        type=int, default=100, dest='max_length')
+    parser.add_argument('--min-freq', help='Minimum times a word must occur to be added to vocabulary (default 5)',
+                        default=5, type=int, dest='min_freq')
+    parser.add_argument('--valid', type=float, default=0.1,
+                        dest='valid_proportion',
+                        help='Proportion of the validation dataset'
+                             '(default 0.1)')
+    args = parser.parse_args()
+
+    train_data, test_data, words = load_data(args.input, args.max_length, args.min_freq, args.valid_proportion)
+
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
+
+    path = os.path.join(args.output, 'valid-data.npz')
+    np.savez(path, **test_data)
+
+    path = os.path.join(args.output, 'train-data.npz')
+    np.savez(path, **train_data)
+
+    path = os.path.join(args.output, 'vocabulary.txt')
+    text = '\n'.join(words)
+    with open(path, 'wb') as f:
+        f.write(text.encode('utf-8'))
