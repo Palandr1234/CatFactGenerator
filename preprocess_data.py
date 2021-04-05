@@ -13,22 +13,21 @@ def create_sentence_matrix(path: str, num_sentences: int, min_threshold: int, ma
     # min_threshold - the lower bound of the range of lengths
     # max_threshold - the upper bound of the range of lengths
     # word_dict - mapping from the word to its number
-    sentence_matrix = np.zeros((num_sentences, max_threshold))
-    sizes = np.empty(num_sentences)
+    sentence_matrix = np.zeros((num_sentences, max_threshold), np.int32)
+    sizes = np.empty(num_sentences, np.int32)
     i = 0
     with open(path, 'rb') as f:
         for line in f:
             line = line.decode('utf-8')
             tokens = line.split()
             size = len(tokens)
-            # if the size of the sentence is not in the range we need then discard it
             if size < min_threshold or size > max_threshold:
                 continue
-            # map every word from a sentence into a number
             array = np.array([word_dict[token] for token in tokens])
             sentence_matrix[i, :size] = array
             sizes[i] = size
             i += 1
+
     return sentence_matrix, sizes
 
 
@@ -54,6 +53,9 @@ def load_data(path: str, max_size: int, min_num: int = 5, test_proportion: float
             token_counter.update(tokens)
     # sort the vocabulary and discard all the words which has the number of occurrences less than min_num
     voc = [w for w, count in token_counter.most_common() if count >= min_num]
+    # marker for unknown words
+    voc.insert(0, '</s>')
+    voc.insert(1, '<unk>')
     mapping = zip(voc, range(len(voc)))
 
     d = defaultdict(lambda: 1, mapping)
