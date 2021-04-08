@@ -2,17 +2,16 @@ from torch import nn
 import torch
 
 
-class Autoencoder(nn.Module):
-    def __init__(self, **kwargs):
+class TextModel(nn.Module):
+    # basic autoencoder class with embedding and projection layers
+    def __init__(self, voc, args, init_range=0.1):
         super.__init__()
-        self.encoder_hidden_layer = nn.Linear(in_features=kwargs["input_shape"], out_features=128)
-        self.encoder_output_layer = nn.Linear(in_features=128, out_features=64)
-        self.decoder_hidden_layer = nn.Linear(in_features=64, out_features=128)
-        self.decoder_output_layer = nn.Linear(in_features=128, out_features=kwargs["input_shape"])
+        self.voc = voc
+        self.args = args
+        self.embed = nn.Embedding(voc.size, args.emb_dim)
+        self.proj = nn.Linear(args.dim_h, voc.size)
 
-    def forward(self, features):
-        activation = torch.relu(self.encoder_hidden_layer(features))
-        activation = torch.relu(self.encoder_output_layer(activation))
-        activation = torch.relu(self.decoder_hidden_layer(activation))
-        activation = torch.relu(self.decoder_output_layer(activation))
-        return activation
+        # weights initialization
+        self.embed.weight.data.uniform_(-init_range, init_range)
+        self.proj.bias.data.zero_()
+        self.proj.weight.data.uniform(-init_range, init_range)
