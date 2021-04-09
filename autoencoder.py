@@ -1,17 +1,51 @@
 from torch import nn
 import torch
+import torch.nn.functional as F
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class TextModel(nn.Module):
-    # basic autoencoder class with embedding and projection layers
-    def __init__(self, voc, args, init_range=0.1):
-        super.__init__()
-        self.voc = voc
-        self.args = args
-        self.embed = nn.Embedding(voc.size, args.emb_dim)
-        self.proj = nn.Linear(args.dim_h, voc.size)
+# encoder part of the AutoEncoder
+class EncoderRNN(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(EncoderRNN, self).__init__()
+        self.hidden_size = hidden_size
 
-        # weights initialization
-        self.embed.weight.data.uniform_(-init_range, init_range)
-        self.proj.bias.data.zero_()
-        self.proj.weight.data.uniform(-init_range, init_range)
+        self.embed = nn.Embedding(input_size, hidden_size)
+        self.gru = nn.GRU(hidden_size, hidden_size)
+
+    def forward(self, input, hidden):
+        embedded = self.embed(input).view(1, 1, -1)
+        output = embedded
+        output, hidden = self.gru(output, hidden).view(1, 1, -1)
+        return output, hidden
+
+    def init_hidden(self):
+        return torch.zeros(1, 1, self.hidden_size, device=device)
+
+
+# decoder part of the AutoEncoder
+class DecoderRNN(nn.Module):
+    def __init__(self, hidden_size, output_size):
+        super(DecoderRNN, self).__init__()
+        self.hidden_size = hidden_size
+
+        self.embed = nn.Embedding(output_size, hidden_size)
+        self.gru = nn.GRU(hidden_size, hidden_size)
+        self.out = nn.Linear(hidden_size, output_size)
+        self.softmax = nn.LogSoftmax(dim=1)
+
+    def forward(self, input, hidden):
+        output = self.embed(input).view(1, 1, -1)
+        output = F.relu(output)
+        output, hidden = self.gru(output, hidden)
+        output, hidden = self.softmax(self.out(output[0]))
+        return output, hidden
+
+    def init_hidden(self):
+        return torch.zeros(1, 1, self.hidden_size, device=device)
+
+
+
+
+
