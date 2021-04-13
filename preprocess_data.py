@@ -45,7 +45,7 @@ def load_data(path: str, max_size: int) -> [dict, dict, list]:
     voc = WordDictionary()
     sentences = [normalizeString(l) for l in lines]
     for sentence in sentences:
-        if len(sentence) < max_size:
+        if len(sentence.split()) < max_size:
             voc.add_sentence(sentence)
     return voc, sentences
 
