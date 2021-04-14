@@ -36,6 +36,7 @@ class VAE(nn.Module):
         output, _ = self.lstm2(z, hidden)
         output = self.dropout(output).view(-1, output.size(-1))
         output = self.proj(output)
+        output = nn.LogSoftmax(dim=1)(output)
         return output
 
     def forward(self, input):
