@@ -7,10 +7,10 @@ import pickle
 
 class WordDictionary:
     def __init__(self):
-        self.word2idx = {}
-        self.word2cnt = {}
-        self.idx2word = {0: "SOS", 1: "EOS"}
-        self.n_words = 2
+        self.word2idx = {"EOS": 0}
+        self.word2cnt = {"EOS": 0}
+        self.idx2word = {0: "EOS"}
+        self.n_words = 1
 
     def add_sentence(self, sentence):
         for word in sentence.split(' '):
