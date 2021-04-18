@@ -3,27 +3,38 @@ import re
 import argparse
 import os
 import pickle
+import pandas as pd
+import torch.utils.data
+from collections import Counter
 
 
-class WordDictionary:
-    def __init__(self):
-        self.word2idx = {"EOS": 0}
-        self.word2cnt = {"EOS": 0}
-        self.idx2word = {0: "EOS"}
-        self.n_words = 1
+class Dataset(torch.utils.data.Dataset):
+    def __init__(self, args):
+        self.args = args
+        self.words = self.load_words()
+        self.unique_words = self.get_unique_words()
+        self.idx2word = {idx: word for idx, word in enumerate(self.unique_words)}
+        self.word2idx = {word: idx for idx, word in enumerate(self.unique_words)}
 
-    def add_sentence(self, sentence):
-        for word in sentence.split(' '):
-            self.add_word(word)
+        self.word_indexes = [self.word2idx[w] for w in self.words]
 
-    def add_word(self, word):
-        if word not in self.word2idx:
-            self.word2idx[word] = self.n_words
-            self.word2cnt[word] = 1
-            self.idx2word[self.n_words] = word
-            self.n_words += 1
-        else:
-            self.word2cnt[word] += 1
+    def load_words(self):
+        train_df = pd.read_csv(self.args.input, sep='\n').applymap(lambda x: normalizeString(x))
+        text = train_df['Fact'].str.cat(sep=' ')
+        return text.split(' ')
+
+    def get_unique_words(self):
+        word_cnts = Counter(self.words)
+        return sorted(word_cnts, key=word_cnts.get, reverse=True)
+
+    def __len__(self):
+        return len(self.word_indexes) - self.args.sequence_length
+
+    def __getitem__(self, item):
+        return (
+            torch.tensor(self.word_indexes[item:item+self.args.sequence_length]),
+            torch.tensor(self.word_indexes[item+1: item+self.args.sequence_length+1])
+        )
 
 
 def unicodeToAscii(s):
@@ -40,36 +51,19 @@ def normalizeString(s):
     return s
 
 
-def load_data(path: str, max_size: int) -> [dict, dict, list]:
-    lines = open(path, encoding='utf-8').read().strip().split('\n')
-    voc = WordDictionary()
-    sentences = [normalizeString(l) for l in lines]
-    for sentence in sentences:
-        if len(sentence.split()) < max_size:
-            voc.add_sentence(sentence)
-    return voc, sentences
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('input', help='Text file previously tokenized and preprocessed')
     parser.add_argument('output', help='Directory to save the data')
-    parser.add_argument('--max-length',
-                        help='Maximum sentence length (default 100)',
-                        type=int, default=100, dest='max_length')
+    parser.add_argument('--sequence-length',
+                        type=int, default=4)
 
     args = parser.parse_args()
-
-    voc, sentences = load_data(args.input, args.max_length)
+    dataset = Dataset(args)
 
     if not os.path.exists(args.output):
         os.makedirs(args.output)
 
     path = os.path.join(args.output, 'vocabulary.pkl')
     with open(path, 'wb') as f:
-        pickle.dump(voc, f)
-
-    path = os.path.join(args.output, 'sentences.txt')
-    text = '\n'.join(sentences)
-    with open(path, 'wb') as f:
-        f.write(text.encode('utf-8'))
+        pickle.dump(dataset, f)
