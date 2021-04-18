@@ -1,68 +1,49 @@
 import pickle
 import torch
 import argparse
-from preprocess_data import WordDictionary
-from autoencoder import VAE
+from tqdm import tqdm
+import random
+import torch.nn as nn
+from torch import optim
+from torch.utils.data import DataLoader
+from preprocess_data import Dataset
+from autoencoder import Model
 
-SOS_token = 0
-EOS_token = 1
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def indexesFromSentence(voc, sentence):
-    return [voc.word2idx[word] for word in sentence.split()]
+def train(dataset, model, args):
+    model.train()
 
+    dataloader = DataLoader(dataset, batch_size=args.batch_size)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
-def tensorFromSentence(voc, sentence):
-    idx = indexesFromSentence(voc, sentence)
-    idx.append(EOS_token)
-    return torch.tensor(idx, dtype=torch.long, device=device)
+    for epoch in tqdm(range(args.max_epoch)):
+        state_h, state_c = model.init_state(args.sequence_length)
+        losses = []
+        for batch, (x, y) in enumerate(dataloader):
+            optimizer.zero_grad()
 
+            y_pred, (state_h, state_c) = model(x, (state_h, state_c))
+            loss = criterion(y_pred.transpose(1, 2), y)
+            state_h = state_h.detach()
+            state_c = state_c.detach()
 
-def getSentence(tensor, voc):
-    decoded_sentence = []
-    for i in range(tensor.shape[0]):
-        topvalue, topindex = tensor[i, :].data.topk(1)
-        if topindex.item() == EOS_token:
-            decoded_sentence.append('<EOS>')
-        else:
-            decoded_sentence.append(voc.idx2word[topindex.item()])
-    return decoded_sentence
-
-
-def train(input_tensor, target_tensor, vae, optimizer, criterion, max_length):
-
-    optimizer.zero_grad()
-
-    input_tensor.to(device)
-    target_tensor.to(device)
-
-    output_tensor = vae(input_tensor)
-    loss = criterion(target_tensor, output_tensor)
-    loss.backward()
-    optimizer.step()
+            loss.backward()
+            optimizer.step()
+            losses.append(loss.item())
+        print({'epoch': epoch, 'loss': sum(losses)/len(losses)})
 
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('embed_size', type=int)
-parser.add_argument('hidden_size', type=int)
-parser.add_argument('nlayers', type=int)
-parser.add_argument('dropout', type=float)
-parser.add_argument('latent_dim', type=int)
-parser.add_argument('--max_length', type=int, default=100)
+parser.add_argument('--max_epoch', type=int, default=10)
+parser.add_argument('--batch_size', type=int, default=64)
+parser.add_argument('--sequence_length', type=int, default=4)
 args = parser.parse_args()
 
-lines = open('output/sentences.txt', encoding='utf-8').read().strip().split('\n')
-sentences = [line for line in lines]
 with open('output/vocabulary.pkl', 'rb') as f:
-    voc = pickle.load(f)
-print(voc.n_words)
-vae = VAE(voc.n_words, args)
-for sentence in sentences:
-    tensor = tensorFromSentence(voc, sentence)
-    print(tensor)
-    output = vae(tensor)
-    print(output.shape)
-    print(getSentence(output, voc))
-    break
+    dataset = pickle.load(f)
 
+model = Model(dataset).to(device)
+train(dataset, model, args)
