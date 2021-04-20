@@ -19,7 +19,7 @@ class Dataset(torch.utils.data.Dataset):
         self.word_indexes = [self.word2idx[w] for w in self.words]
 
     def load_words(self):
-        train_df = pd.read_csv(self.args.input, sep='\n').applymap(lambda x: normalizeString(x))
+        train_df = pd.read_csv(self.args.input, sep='\n').applymap(lambda x: normalizeString(x) + " EOS")
         text = train_df['Fact'].str.cat(sep=' ')
         return text.split(' ')
 
@@ -46,8 +46,8 @@ def unicodeToAscii(s):
 
 def normalizeString(s):
     s = unicodeToAscii(s.lower().strip())
-    s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+    s = re.sub(r"([,.!?])", r" \1", s)
+    s = re.sub(r"[^a-zA-Z0-9,.!?]+", r" ", s)
     return s
 
 
@@ -60,7 +60,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     dataset = Dataset(args)
-
     if not os.path.exists(args.output):
         os.makedirs(args.output)
 
