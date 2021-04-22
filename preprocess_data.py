@@ -57,13 +57,12 @@ if __name__ == '__main__':
     parser.add_argument('input', help='Text file previously tokenized and preprocessed')
     parser.add_argument('output', help='Directory to save the data')
     parser.add_argument('--sequence-length',
-                        type=int, default=4)
+                        type=int, default=6)
 
     args = parser.parse_args()
     dataset = Dataset(args)
     if not os.path.exists(args.output):
         os.makedirs(args.output)
-
     path = os.path.join(args.output, 'vocabulary.pkl')
     with open(path, 'wb') as f:
         pickle.dump(dataset, f)
