@@ -41,7 +41,7 @@ def hello(message):
 def generate_fact(message):
     initial_text = choose_beginning(dataset)
     text = ' '.join(predict(dataset, model, initial_text))
-    text = re.sub(r'\s([:?.!,)](?:\s|$))', r'\1', text)
+    text = re.sub(r'\s([:?.!,;)](?:\s|$))', r'\1', text)
     text = re.sub(r'((?:\s|$)[(])\s', r'\1', text)
     like_keyboard = types.InlineKeyboardMarkup()
     like_button = types.InlineKeyboardButton(text=emojize(':thumbs_up:'), callback_data='like')
