@@ -46,9 +46,9 @@ def unicodeToAscii(s):
 
 def normalizeString(s):
     s = unicodeToAscii(s.lower().strip())
-    s = re.sub(r"([),.!?%:])", r" \1", s)
+    s = re.sub(r"([),.!?%:;])", r" \1", s)
     s = re.sub(r"([(])", r"\1 ", s)
-    s = re.sub(r"[^a-zA-Z0-9%,.!?()':-]+", r" ", s)
+    s = re.sub(r"[^a-zA-Z0-9%,.!?()':;-]+", r" ", s)
     return s
 
 
