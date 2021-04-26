@@ -13,7 +13,7 @@ import re
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('token', type=str)
-parser.add_argument('--dataset', type=str, default="vocabulary.pkl")
+parser.add_argument('--dataset', type=str, default="output/vocabulary.pkl")
 parser.add_argument('--model', type=str, default="state_dict_model.pt")
 args = parser.parse_args()
 
