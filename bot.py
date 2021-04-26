@@ -1,13 +1,13 @@
 import telebot
 import argparse
 import pickle
-from test import predict
 from model import Model
-from preprocess_data import Dataset
+from preprocess_data import Dataset, normalizeString
 import random
 import torch
 from telebot import types
 from emoji import emojize
+import numpy as np
 import re
 
 
@@ -18,6 +18,29 @@ parser.add_argument('--model', type=str, default="state_dict_model.pt")
 args = parser.parse_args()
 
 bot = telebot.TeleBot(args.token)
+
+
+def predict(dataset, model, text, next_words=100):
+    words = normalizeString(text).split()
+    model.eval()
+    state = model.init_state(len(words))
+
+    for i in range(0, next_words):
+        x = torch.tensor([[dataset.word2idx[w] for w in words[i:]]])
+        y_pred, state = model(x, state)
+
+        last_word_logits = y_pred[0][-1]
+        p = torch.nn.functional.softmax(last_word_logits, dim=0).detach().numpy().astype('float64')
+        idx = p.argsort()[-5:][::-1]
+        new_p = np.zeros(p.shape).astype('float64')
+        new_p[idx] = (p[idx]/np.sum(p[idx]))
+        # new_p[idx] /= np.sum(new_p)
+        word_index = np.random.choice(len(last_word_logits), p=new_p)
+        if dataset.idx2word[word_index] == "EOS":
+            break
+        words.append(dataset.idx2word[word_index])
+
+    return words
 
 
 def choose_beginning(dataset):
