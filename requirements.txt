@@ -1,0 +1,4 @@
+argparse==1.4.0
+torch==1.8.1
+emoji==1.2.0
+TelegramBotAPI==0.3.2
