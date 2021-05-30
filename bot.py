@@ -9,6 +9,7 @@ from telebot import types
 from emoji import emojize
 import numpy as np
 import re
+from test import predict
 
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -20,77 +21,74 @@ args = parser.parse_args()
 bot = telebot.TeleBot(args.token)
 
 
-def predict(dataset, model, text, next_words=100):
-    words = normalizeString(text).split()
-    model.eval()
-    state = model.init_state(len(words))
-
-    for i in range(0, next_words):
-        x = torch.tensor([[dataset.word2idx[w] for w in words[i:]]])
-        y_pred, state = model(x, state)
-
-        last_word_logits = y_pred[0][-1]
-        p = torch.nn.functional.softmax(last_word_logits, dim=0).detach().numpy().astype('float64')
-        idx = p.argsort()[-5:][::-1]
-        new_p = np.zeros(p.shape).astype('float64')
-        new_p[idx] = (p[idx]/np.sum(p[idx]))
-        # new_p[idx] /= np.sum(new_p)
-        word_index = np.random.choice(len(last_word_logits), p=new_p)
-        if dataset.idx2word[word_index] == "EOS":
-            break
-        words.append(dataset.idx2word[word_index])
-
-    return words
-
-
+# generate the beginning of the text
+# dataset - dataset to be used
 def choose_beginning(dataset):
+    # find all possible beginnigs for the text
     indices = [(i + 1) % len(dataset.words) for i, x in enumerate(dataset.words) if x == "EOS"]
+    # generate the length of the beginning
     length = random.randint(1, 5)
+    # choose the beginning
     idx = random.choice(indices)
     return ' '.join(dataset.words[idx:idx+length])
 
 
+# function when the user starts  using the bot
 @bot.message_handler(commands=['start'])
 def hello(message):
+    # generate the keyboard
     command_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     fact_button = types.KeyboardButton('fact')
     help_button = types.KeyboardButton('help')
     command_keyboard.add(fact_button, help_button)
+    # send the hello message
     bot.send_message(message.from_user.id, text="Hello! I am the bot for generating facts about cats",
                      reply_markup=command_keyboard)
 
 
+# generate the fact if the user types the command /fact
 @bot.message_handler(content_types=['text'], commands=['fact'])
 def generate_fact(message):
+    # generate the beginning of the text
     initial_text = choose_beginning(dataset)
+    # generate the text
     text = ' '.join(predict(dataset, model, initial_text))
+    # normalize text
     text = re.sub(r'\s([:?.!,;)](?:\s|$))', r'\1', text)
     text = re.sub(r'((?:\s|$)[(])\s', r'\1', text)
+    # add the keyboard
     like_keyboard = types.InlineKeyboardMarkup()
     like_button = types.InlineKeyboardButton(text=emojize(':thumbs_up:'), callback_data='like')
     dislike_button = types.InlineKeyboardButton(text=emojize(':thumbs_down:'), callback_data="dislike")
     like_keyboard.add(like_button, dislike_button)
+    # send the message with the fact
     bot.send_message(message.from_user.id, text=text, reply_markup=like_keyboard)
 
 
+# check whether user put the like or dislike
 @bot.callback_query_handler(func=lambda call: True)
 def is_like(call):
+    # if it is like then send "thanks for like" and save the fact that was liked into the dataset
     if call.data == 'like':
         bot.send_message(call.message.chat.id, "Thanks for like")
         with open('output/new.txt', 'a') as f:
             f.write(call.message.text)
             f.write('\n')
+    # if it is dislike then send "ok"
     elif call.data == 'dislike':
         bot.send_message(call.message.chat.id, "Ok")
 
 
+# process messages other than /start and /fact command
 @bot.message_handler(content_types=['text'])
 def process_text(message):
     if message.text == 'fact':
         generate_fact(message)
+    # if the message is help then send the help message
     elif message.text == 'help':
         bot.send_message(message.from_user.id, text='Hello! I am the bot for generating facts about cats. Send the'
                                                     ' command /fact for generating the fact or press the button "Fact"')
+    # otherwise send that we do not understand the user
     else:
         bot.send_message(message.from_user.id, text="I don't understand you")
 
@@ -100,6 +98,7 @@ if __name__ == '__main__':
         dataset = pickle.load(f)
 
     PATH = args.model
+    # load the model
     model = Model(dataset)
     model.load_state_dict(torch.load(PATH))
     model.eval()
