@@ -10,7 +10,7 @@ from collections import Counter
 
 # class for the Dataset
 class Dataset(torch.utils.data.Dataset):
-    # intialization of the dataset
+    # initialization of the dataset
     # args - arguments for the Dataset (like input folder, sequence length)
     def __init__(self, args):
         self.args = args
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('input', help='Text file previously tokenized and preprocessed')
     parser.add_argument('output', help='Directory to save the data')
     parser.add_argument('--sequence-length',
-                        type=int, default=6)
+                        type=int, default=5)
 
     args = parser.parse_args()
     dataset = Dataset(args)
