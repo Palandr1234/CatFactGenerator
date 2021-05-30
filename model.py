@@ -6,13 +6,13 @@ from torch.autograd import Variable
 class Model(nn.Module):
     def __init__(self, dataset):
         super(Model, self).__init__()
-        self.hidden_size = 512
+        self.hidden_size = 256
         self.embed_size = 200
         self.n_layers = 4
         n_vocab = len(dataset.unique_words)
         self.embed = nn.Embedding(n_vocab, self.embed_size)
         self.gru = nn.GRU(self.embed_size, self.hidden_size, self.n_layers)
-        self.dropout = nn.Dropout(0.4)
+        self.dropout = nn.Dropout(0.5)
         self.fc = nn.Linear(self.hidden_size, n_vocab)
 
     def forward(self, x, prev_state):
