@@ -12,7 +12,7 @@ class Model(nn.Module):
         n_vocab = len(dataset.unique_words)
         self.embed = nn.Embedding(n_vocab, self.embed_size)
         self.gru = nn.GRU(self.embed_size, self.hidden_size, self.n_layers)
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.4)
         self.fc = nn.Linear(self.hidden_size, n_vocab)
 
     def forward(self, x, prev_state):
